@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,14 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const STORAGE_KEY = '@task_list_key';
 
 interface Task {
   id: string;
@@ -23,6 +27,35 @@ function HomeScreen({ navigation }: { navigation: any }) {
     { id: '2', title: 'Read docs', done: false },
     { id: '3', title: 'Call mentor', done: false },
   ]);
+
+  // 1. Load tasks from AsyncStorage when app opens
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const storedTasks = await AsyncStorage.getItem(STORAGE_KEY);
+        if (storedTasks) {
+          setTasks(JSON.parse(storedTasks));
+        }
+      } catch {
+        Alert.alert('Error', 'Failed to load tasks');
+      }
+    };
+
+    loadTasks();
+  }, []);
+
+  // 2. Save tasks to AsyncStorage whenever the task list updates
+  useEffect(() => {
+    const saveTasks = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      } catch {
+        Alert.alert('Error', 'Failed to save tasks');
+      }
+    };
+
+    saveTasks();
+  }, [tasks]);
 
   const toggleTask = (id: string) => {
     setTasks(
@@ -39,6 +72,27 @@ function HomeScreen({ navigation }: { navigation: any }) {
       done: false,
     };
     setTasks([newTask, ...tasks]);
+  };
+
+  const deleteTask = (id: string) => {
+    Alert.alert('Delete task', 'Delete this task?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          setTasks(tasks.filter((task) => task.id !== id));
+        },
+      },
+    ]);
+  };
+
+  const editTask = (id: string, newTitle: string) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === id ? { ...task, title: newTitle } : task
+      )
+    );
   };
 
   const completedCount = tasks.filter((t) => t.done).length;
@@ -63,21 +117,45 @@ function HomeScreen({ navigation }: { navigation: any }) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.taskCard}
-              onPress={() => toggleTask(item.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text
-                style={[
-                  styles.statusText,
-                  item.done ? styles.doneText : styles.pendingText,
-                ]}
+            <View style={styles.taskCard}>
+              <TouchableOpacity
+                style={styles.taskInfo}
+                onPress={() => toggleTask(item.id)}
+                activeOpacity={0.7}
               >
-                {item.done ? 'Done' : 'Pending'}
-              </Text>
-            </TouchableOpacity>
+                <Text style={styles.taskTitle}>{item.title}</Text>
+                <Text
+                  style={[
+                    styles.statusText,
+                    item.done ? styles.doneText : styles.pendingText,
+                  ]}
+                >
+                  {item.done ? 'Done' : 'Pending'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.rowActions}>
+                <TouchableOpacity
+                  style={styles.smallEditButton}
+                  onPress={() =>
+                    navigation.navigate('EditTask', {
+                      id: item.id,
+                      title: item.title,
+                      updateTask: editTask,
+                    })
+                  }
+                >
+                  <Text style={styles.smallButtonText}>Edit</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.smallDeleteButton}
+                  onPress={() => deleteTask(item.id)}
+                >
+                  <Text style={styles.smallButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
         />
       )}
@@ -92,7 +170,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   );
 }
 
-=function AddScreen({ navigation, route }: { navigation: any; route: any }) {
+function AddScreen({ navigation, route }: { navigation: any; route: any }) {
   const { addTask } = route.params;
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
@@ -139,6 +217,53 @@ function HomeScreen({ navigation }: { navigation: any }) {
   );
 }
 
+function EditScreen({ navigation, route }: { navigation: any; route: any }) {
+  const { id, title: initialTitle, updateTask } = route.params;
+  const [title, setTitle] = useState(initialTitle);
+  const [error, setError] = useState('');
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      setError('Please enter a title');
+      return;
+    }
+    updateTask(id, title.trim());
+    navigation.goBack();
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Edit task</Text>
+
+      <View style={styles.formContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter task title..."
+          placeholderTextColor="#888"
+          value={title}
+          onChangeText={(text) => {
+            setTitle(text);
+            if (error) setError('');
+          }}
+          autoFocus
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity style={styles.primaryButton} onPress={handleSave}>
+          <Text style={styles.buttonText}>Save</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.secondaryButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -153,6 +278,11 @@ export default function App() {
         <Stack.Screen
           name="AddTask"
           component={AddScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EditTask"
+          component={EditScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
@@ -196,6 +326,32 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  taskInfo: {
+    flex: 1,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  smallEditButton: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  smallDeleteButton: {
+    backgroundColor: '#ffebee',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  smallButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+  },
   taskTitle: {
     fontSize: 16,
     color: '#333',
@@ -203,6 +359,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     fontWeight: '600',
+    marginTop: 2,
   },
   doneText: {
     color: '#2e7d32',
