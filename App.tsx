@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import {
   View,
   Text,
@@ -21,14 +21,32 @@ interface Task {
   done: boolean;
 }
 
-function HomeScreen({ navigation }: { navigation: any }) {
+interface TaskContextType {
+  tasks: Task[];
+  addTask: (title: string) => void;
+  toggleTask: (id: string) => void;
+  deleteTask: (id: string) => void;
+  editTask: (id: string, newTitle: string) => void;
+}
+
+// 1. Create Context for Tasks
+const TaskContext = createContext<TaskContextType | undefined>(undefined);
+
+const useTasks = () => {
+  const context = useContext(TaskContext);
+  if (!context) {
+    throw new Error('useTasks must be used within a TaskProvider');
+  }
+  return context;
+};
+
+function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([
     { id: '1', title: 'Buy milk', done: true },
     { id: '2', title: 'Read docs', done: false },
     { id: '3', title: 'Call mentor', done: false },
   ]);
 
-  // 1. Load tasks from AsyncStorage when app opens
   useEffect(() => {
     const loadTasks = async () => {
       try {
@@ -44,7 +62,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
     loadTasks();
   }, []);
 
-  // 2. Save tasks to AsyncStorage whenever the task list updates
   useEffect(() => {
     const saveTasks = async () => {
       try {
@@ -57,21 +74,21 @@ function HomeScreen({ navigation }: { navigation: any }) {
     saveTasks();
   }, [tasks]);
 
-  const toggleTask = (id: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, done: !task.done } : task
-      )
-    );
-  };
-
   const addTask = (title: string) => {
     const newTask: Task = {
       id: Date.now().toString(),
       title,
       done: false,
     };
-    setTasks([newTask, ...tasks]);
+    setTasks((prev) => [newTask, ...prev]);
+  };
+
+  const toggleTask = (id: string) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id ? { ...task, done: !task.done } : task
+      )
+    );
   };
 
   const deleteTask = (id: string) => {
@@ -81,22 +98,54 @@ function HomeScreen({ navigation }: { navigation: any }) {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          setTasks(tasks.filter((task) => task.id !== id));
+          setTasks((prev) => prev.filter((task) => task.id !== id));
         },
       },
     ]);
   };
 
   const editTask = (id: string, newTitle: string) => {
-    setTasks(
-      tasks.map((task) =>
+    setTasks((prev) =>
+      prev.map((task) =>
         task.id === id ? { ...task, title: newTitle } : task
       )
     );
   };
 
+  return (
+    <TaskContext.Provider
+      value={{ tasks, addTask, toggleTask, deleteTask, editTask }}
+    >
+      {children}
+    </TaskContext.Provider>
+  );
+}
+
+type FilterType = 'All' | 'Pending' | 'Done';
+
+function HomeScreen({ navigation }: { navigation: any }) {
+  const { tasks, toggleTask, deleteTask } = useTasks();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+
+  // Counts based on total list, irrespective of current search or filter
   const completedCount = tasks.filter((t) => t.done).length;
   const totalCount = tasks.length;
+
+  // Filter and search logic combined
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase().trim());
+
+    if (activeFilter === 'Pending') {
+      return matchesSearch && !task.done;
+    }
+    if (activeFilter === 'Done') {
+      return matchesSearch && task.done;
+    }
+    return matchesSearch;
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -105,15 +154,49 @@ function HomeScreen({ navigation }: { navigation: any }) {
         <Text style={styles.counter}>
           Completed {completedCount} of {totalCount}
         </Text>
+
+        {/* Search Bar */}
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search tasks..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        {/* Filter Buttons */}
+        <View style={styles.filterContainer}>
+          {(['All', 'Pending', 'Done'] as FilterType[]).map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.filterButton,
+                activeFilter === filter && styles.filterButtonActive,
+              ]}
+              onPress={() => setActiveFilter(filter)}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  activeFilter === filter && styles.filterButtonTextActive,
+                ]}
+              >
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
-      {tasks.length === 0 ? (
+      {filteredTasks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No tasks yet</Text>
+          <Text style={styles.emptyText}>
+            {tasks.length === 0 ? 'No tasks yet' : 'No tasks found'}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={tasks}
+          data={filteredTasks}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
@@ -138,11 +221,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 <TouchableOpacity
                   style={styles.smallEditButton}
                   onPress={() =>
-                    navigation.navigate('EditTask', {
-                      id: item.id,
-                      title: item.title,
-                      updateTask: editTask,
-                    })
+                    // Only pass primitive string id in params (no functions!)
+                    navigation.navigate('EditTask', { id: item.id })
                   }
                 >
                   <Text style={styles.smallButtonText}>Edit</Text>
@@ -162,7 +242,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => navigation.navigate('AddTask', { addTask })}
+        onPress={() => navigation.navigate('AddTask')}
       >
         <Text style={styles.buttonText}>Add task</Text>
       </TouchableOpacity>
@@ -170,8 +250,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
   );
 }
 
-function AddScreen({ navigation, route }: { navigation: any; route: any }) {
-  const { addTask } = route.params;
+function AddScreen({ navigation }: { navigation: any }) {
+  const { addTask } = useTasks();
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
 
@@ -218,8 +298,11 @@ function AddScreen({ navigation, route }: { navigation: any; route: any }) {
 }
 
 function EditScreen({ navigation, route }: { navigation: any; route: any }) {
-  const { id, title: initialTitle, updateTask } = route.params;
-  const [title, setTitle] = useState(initialTitle);
+  const { id } = route.params;
+  const { tasks, editTask } = useTasks();
+
+  const currentTask = tasks.find((t) => t.id === id);
+  const [title, setTitle] = useState(currentTask ? currentTask.title : '');
   const [error, setError] = useState('');
 
   const handleSave = () => {
@@ -227,7 +310,7 @@ function EditScreen({ navigation, route }: { navigation: any; route: any }) {
       setError('Please enter a title');
       return;
     }
-    updateTask(id, title.trim());
+    editTask(id, title.trim());
     navigation.goBack();
   };
 
@@ -268,25 +351,27 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AddTask"
-          component={AddScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="EditTask"
-          component={EditScreen}
-          options={{ headerShown: false }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <TaskProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Home">
+          <Stack.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AddTask"
+            component={AddScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="EditTask"
+            component={EditScreen}
+            options={{ headerShown: false }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </TaskProvider>
   );
 }
 
@@ -308,6 +393,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  searchBar: {
+    backgroundColor: '#ffffff',
+    padding: 10,
+    borderRadius: 8,
+    fontSize: 15,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginTop: 12,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 6,
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  filterButtonActive: {
+    backgroundColor: '#1976d2',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  filterButtonTextActive: {
+    color: '#ffffff',
   },
   listContainer: {
     paddingBottom: 16,
