@@ -11,7 +11,8 @@ import { useTasks } from '../TaskContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type FilterType = 'All' | 'Pending' | 'Done';                          
-function HomeScreen({ navigation }: { navigation: any }) {
+
+export function HomeScreen({ navigation }: { navigation: any }) {
   const { tasks, deleteTask } = useTasks();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
@@ -109,7 +110,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 <TouchableOpacity
                   style={styles.smallEditButton}
                   onPress={() =>
-                    // Only pass primitive string id in params (no functions!)
                     navigation.navigate('EditTask', { id: item.id })
                   }
                 >
@@ -128,19 +128,30 @@ function HomeScreen({ navigation }: { navigation: any }) {
         />
       )}
 
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={() => navigation.navigate('AddTask')}
-      >
-        <Text style={styles.buttonText}>Add task</Text>
-      </TouchableOpacity>
+      {/* Bottom Action Buttons: Users & Add Task */}
+      <View style={styles.bottomButtonsRow}>
+        <TouchableOpacity
+          style={[styles.primaryButton, styles.usersButton]}
+          onPress={() => navigation.navigate('Users')}
+        >
+          <Text style={styles.buttonText}>Users</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.primaryButton, styles.addBtnFlex]}
+          onPress={() => navigation.navigate('AddTask')}
+        >
+          <Text style={styles.buttonText}>Add task</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
   headerContainer: { marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 8, color: '#111' },
   counter: { fontSize: 16, color: '#555', marginBottom: 12 },
   searchBar: {
     borderWidth: 1,
@@ -150,10 +161,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
     color: '#000',
+    backgroundColor: '#fafafa',
   },
   filterContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
   },
   filterButton: {
     paddingHorizontal: 12,
@@ -192,9 +203,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#111',
   },
   statusText: {
     fontSize: 12,
+    fontWeight: '500',
   },
   doneText: {
     color: 'green',
@@ -224,12 +237,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  bottomButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
   primaryButton: {
-    backgroundColor: '#007AFF',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 12,
+  },
+  usersButton: {
+    backgroundColor: '#34C759',
+    flex: 1,
+  },
+  addBtnFlex: {
+    backgroundColor: '#007AFF',
+    flex: 2,
   },
   buttonText: {
     color: '#fff',
@@ -248,5 +272,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;  
-  
+export default HomeScreen;
