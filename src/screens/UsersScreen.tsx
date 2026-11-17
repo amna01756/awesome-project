@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
   Text,
   TextInput,
   FlatList,
@@ -16,11 +15,11 @@ interface User {
   name: string;
   email: string;
   address: {
-  city: string;
+    city: string;
   };
 }
 
-export function UsersScreen({ }: { navigation: any }) {
+export function UsersScreen({ navigation }: { navigation: any }) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
@@ -98,11 +97,14 @@ export function UsersScreen({ }: { navigation: any }) {
           <Text style={styles.emptyText}>No users found.</Text>
         }
         renderItem={({ item }) => (
-          <View style={styles.userCard}>
+          <TouchableOpacity
+            style={styles.userCard}
+            onPress={() => navigation.navigate('UserDetail', { userId: item.id })}
+          >
             <Text style={styles.userName}>{item.name}</Text>
             <Text style={styles.userEmail}>{item.email}</Text>
             <Text style={styles.userCity}>City: {item.address.city}</Text>
-          </View>
+          </TouchableOpacity>
         )}
       />
     </SafeAreaView>

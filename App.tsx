@@ -3,11 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TaskProvider } from './src/TaskContext';
 import HomeScreen from './src/screens/HomeScreen';
-import  AddScreen  from './src/screens/AddScreen';
-import EditScreen  from './src/screens/EditScreen';
+import AddScreen from './src/screens/AddScreen';
+import EditScreen from './src/screens/EditScreen';
 import { DetailScreen } from './src/screens/DetailScreen';
 import { UsersScreen } from './src/screens/UsersScreen';
-// In App.tsx inside your Stack.Navigator
+import { UserDetailScreen } from './src/screens/UserDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -40,6 +40,11 @@ export default function App() {
             name="Users"
             component={UsersScreen} 
             options={{ title: 'Users Directory' }} 
+          />
+          <Stack.Screen 
+            name="UserDetail"
+            component={UserDetailScreen} 
+            options={{ title: 'User Profile & Posts' }} 
           />
         </Stack.Navigator>
       </NavigationContainer>
