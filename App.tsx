@@ -8,6 +8,8 @@ import EditScreen from './src/screens/EditScreen';
 import { DetailScreen } from './src/screens/DetailScreen';
 import { UsersScreen } from './src/screens/UsersScreen';
 import { UserDetailScreen } from './src/screens/UserDetailScreen';
+import { ProfileScreen } from './src/screens/ProfileScreen';
+import { EditProfileScreen } from './src/screens/EditProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,7 +21,7 @@ export default function App() {
           <Stack.Screen
             name="Home"
             component={HomeScreen}
-            options={{ headerShown: false }} 
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="AddTask"
@@ -36,15 +38,25 @@ export default function App() {
             component={DetailScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen 
+          <Stack.Screen
             name="Users"
-            component={UsersScreen} 
-            options={{ title: 'Users Directory' }} 
+            component={UsersScreen}
+            options={{ title: 'Users Directory' }}
           />
-          <Stack.Screen 
+          <Stack.Screen
             name="UserDetail"
-            component={UserDetailScreen} 
-            options={{ title: 'User Profile & Posts' }} 
+            component={UserDetailScreen}
+            options={{ title: 'User Profile & Posts' }}
+          />
+          <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="EditProfile"
+            component={EditProfileScreen}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
       </NavigationContainer>

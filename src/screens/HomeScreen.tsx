@@ -9,8 +9,9 @@ import {
 } from 'react-native';
 import { useTasks } from '../TaskContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button } from '../ui/Button';
 
-type FilterType = 'All' | 'Pending' | 'Done';                          
+type FilterType = 'All' | 'Pending' | 'Done';
 
 export function HomeScreen({ navigation }: { navigation: any }) {
   const { tasks, deleteTask } = useTasks();
@@ -39,10 +40,20 @@ export function HomeScreen({ navigation }: { navigation: any }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerContainer}>
-        <Text style={styles.title}>My tasks</Text>
-        <Text style={styles.counter}>
-          Completed {completedCount} of {totalCount}
-        </Text>
+        <View style={styles.topHeaderRow}>
+          <View>
+            <Text style={styles.title}>My tasks</Text>
+            <Text style={styles.counter}>
+              Completed {completedCount} of {totalCount}
+            </Text>
+          </View>
+          <Button
+            title="Profile"
+            variant="secondary"
+            onPress={() => navigation.navigate('Profile')}
+            style={styles.profileButton}
+          />
+        </View>
 
         {/* Search Bar */}
         <TextInput
@@ -151,8 +162,17 @@ export function HomeScreen({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
   headerContainer: { marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 8, color: '#111' },
-  counter: { fontSize: 16, color: '#555', marginBottom: 12 },
+  topHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  profileButton: {
+    paddingHorizontal: 14,
+  },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 4, color: '#111' },
+  counter: { fontSize: 16, color: '#555', marginBottom: 8 },
   searchBar: {
     borderWidth: 1,
     borderColor: '#ccc',
