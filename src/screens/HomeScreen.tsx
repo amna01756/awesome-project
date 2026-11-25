@@ -1,295 +1,271 @@
 import React, { useState } from 'react';
 import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
   View,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
 } from 'react-native';
-import { useTasks } from '../TaskContext';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Screen } from '../ui/Screen';
+import { Card } from '../ui/Card';
+import { AppText } from '../ui/AppText';
 import { Button } from '../ui/Button';
+import { useTasks } from '../TaskContext';
 
 type FilterType = 'All' | 'Pending' | 'Done';
 
 export function HomeScreen({ navigation }: { navigation: any }) {
-  const { tasks, deleteTask } = useTasks();
+  const { tasks, toggleTask, deleteTask } = useTasks();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
-  // Counts based on total list, irrespective of current search or filter
-  const completedCount = tasks.filter((t: { done: boolean }) => t.done).length;
-  const totalCount = tasks.length;
-
-  // Filter and search logic combined
-  const filteredTasks = tasks.filter((task: { title: string; done: boolean }) => {
+  const filteredTasks = tasks.filter((task: any) => {
     const matchesSearch = task.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase().trim());
 
     if (activeFilter === 'Pending') {
-      return matchesSearch && !task.done;
+      return matchesSearch && !task.completed;
     }
     if (activeFilter === 'Done') {
-      return matchesSearch && task.done;
+      return matchesSearch && task.completed;
     }
     return matchesSearch;
   });
 
+  const handleAddTask = () => {
+    const trimmed = newTaskTitle.trim();
+    if (!trimmed) {
+      return;
+    }
+    navigation.navigate('AddTask', { initialTitle: trimmed });
+    setNewTaskTitle('');
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerContainer}>
-        <View style={styles.topHeaderRow}>
-          <View>
-            <Text style={styles.title}>My tasks</Text>
-            <Text style={styles.counter}>
-              Completed {completedCount} of {totalCount}
-            </Text>
-          </View>
-          <Button
-            title="Profile"
-            variant="secondary"
-            onPress={() => navigation.navigate('Profile')}
-            style={styles.profileButton}
-          />
-        </View>
+    <Screen>
+      <AppText variant="title" style={styles.title}>
+        Tasks
+      </AppText>
 
-        {/* Search Bar */}
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Search tasks..."
-          placeholderTextColor="#888"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+      <TextInput
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search tasks..."
+        placeholderTextColor="#9ca3af"
+        style={styles.searchInput}
+      />
 
-        {/* Filter Buttons */}
-        <View style={styles.filterContainer}>
-          {(['All', 'Pending', 'Done'] as FilterType[]).map((filter) => (
+      <View style={styles.filterRow}>
+        {(['All', 'Pending', 'Done'] as FilterType[]).map((filter) => {
+          const isSelected = activeFilter === filter;
+          return (
             <TouchableOpacity
               key={filter}
-              style={[
-                styles.filterButton,
-                activeFilter === filter && styles.filterButtonActive,
-              ]}
               onPress={() => setActiveFilter(filter)}
+              style={[
+                styles.filterChip,
+                isSelected && styles.filterChipActive,
+              ]}
             >
-              <Text
+              <AppText
+                variant="caption"
                 style={[
-                  styles.filterButtonText,
-                  activeFilter === filter && styles.filterButtonTextActive,
+                  styles.filterText,
+                  isSelected && styles.filterTextActive,
                 ]}
               >
                 {filter}
-              </Text>
+              </AppText>
             </TouchableOpacity>
-          ))}
-        </View>
+          );
+        })}
       </View>
 
-      {filteredTasks.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            {tasks.length === 0 ? 'No tasks yet' : 'No tasks found'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredTasks}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          renderItem={({ item }) => (
-            <View style={styles.taskCard}>
+      <View style={styles.addRow}>
+        <TextInput
+          value={newTaskTitle}
+          onChangeText={setNewTaskTitle}
+          placeholder="New task title..."
+          placeholderTextColor="#9ca3af"
+          style={styles.taskInput}
+        />
+        <Button
+          title="Add"
+          variant="primary"
+          onPress={handleAddTask}
+          style={styles.addButton}
+        />
+      </View>
+
+      <FlatList
+        data={filteredTasks}
+        keyExtractor={(item: any) => String(item.id)}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <Card style={styles.emptyCard}>
+            <AppText variant="body" style={styles.emptyText}>
+              No tasks found.
+            </AppText>
+          </Card>
+        }
+        renderItem={({ item }: { item: any }) => (
+          <Card style={styles.taskCard}>
+            <View style={styles.taskRow}>
               <TouchableOpacity
                 style={styles.taskInfo}
-                onPress={() => navigation.navigate('DetailTask', { id: item.id })}
-                activeOpacity={0.7}
+                onPress={() =>
+                  navigation.navigate('TaskDetail', { taskId: item.id })
+                }
               >
-                <Text style={styles.taskTitle}>{item.title}</Text>
-                <Text
+                <AppText
+                  variant="body"
                   style={[
-                    styles.statusText,
-                    item.done ? styles.doneText : styles.pendingText,
+                    styles.taskTitle,
+                    item.completed && styles.completedTask,
                   ]}
                 >
-                  {item.done ? 'Done' : 'Pending'}
-                </Text>
+                  {item.title}
+                </AppText>
+                <AppText variant="caption">
+                  {item.completed ? 'Done' : 'Pending'}
+                </AppText>
               </TouchableOpacity>
 
-              <View style={styles.rowActions}>
+              <View style={styles.taskActions}>
                 <TouchableOpacity
-                  style={styles.smallEditButton}
-                  onPress={() =>
-                    navigation.navigate('EditTask', { id: item.id })
-                  }
+                  onPress={() => toggleTask(item.id)}
+                  style={styles.actionPill}
                 >
-                  <Text style={styles.smallButtonText}>Edit</Text>
+                  <AppText variant="caption" style={styles.actionText}>
+                    {item.completed ? 'Undo' : 'Done'}
+                  </AppText>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.smallDeleteButton}
                   onPress={() => deleteTask(item.id)}
+                  style={[styles.actionPill, styles.deletePill]}
                 >
-                  <Text style={styles.smallButtonText}>Delete</Text>
+                  <AppText variant="caption" style={styles.deleteText}>
+                    Delete
+                  </AppText>
                 </TouchableOpacity>
               </View>
             </View>
-          )}
-        />
-      )}
-
-      {/* Bottom Action Buttons: Users & Add Task */}
-      <View style={styles.bottomButtonsRow}>
-        <TouchableOpacity
-          style={[styles.primaryButton, styles.usersButton]}
-          onPress={() => navigation.navigate('Users')}
-        >
-          <Text style={styles.buttonText}>Users</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.primaryButton, styles.addBtnFlex]}
-          onPress={() => navigation.navigate('AddTask')}
-        >
-          <Text style={styles.buttonText}>Add task</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          </Card>
+        )}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  headerContainer: { marginBottom: 20 },
-  topHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  profileButton: {
-    paddingHorizontal: 14,
-  },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 4, color: '#111' },
-  counter: { fontSize: 16, color: '#555', marginBottom: 8 },
-  searchBar: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
+  title: {
     marginBottom: 12,
-    color: '#000',
-    backgroundColor: '#fafafa',
   },
-  filterContainer: {
+  searchInput: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 12,
+  },
+  filterRow: {
     flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
   },
-  filterButton: {
-    paddingHorizontal: 12,
+  filterChip: {
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#eee',
-    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: '#e5e7eb',
   },
-  filterButtonActive: {
-    backgroundColor: '#007AFF',
+  filterChipActive: {
+    backgroundColor: '#1976d2',
   },
-  filterButtonText: {
-    color: '#333',
+  filterText: {
+    color: '#374151',
     fontWeight: '600',
   },
-  filterButtonTextActive: {
-    color: '#fff',
+  filterTextActive: {
+    color: '#ffffff',
   },
-  listContainer: {
-    paddingBottom: 20,
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  taskInput: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#111827',
+  },
+  addButton: {
+    paddingHorizontal: 18,
+  },
+  listContent: {
+    paddingBottom: 16,
   },
   taskCard: {
+    marginBottom: 10,
+  },
+  taskRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
   },
   taskInfo: {
     flex: 1,
-    marginRight: 12,
+    paddingRight: 12,
   },
   taskTitle: {
-    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
-    color: '#111',
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
+  completedTask: {
+    textDecorationLine: 'line-through',
+    color: '#6b7280',
   },
-  doneText: {
-    color: 'green',
-  },
-  pendingText: {
-    color: '#d90606',
-  },
-  rowActions: {
+  taskActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
   },
-  smallEditButton: {
-    backgroundColor: '#E5E7EB',
+  actionPill: {
+    backgroundColor: '#eff6ff',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 6,
-    marginRight: 8,
+    borderRadius: 8,
   },
-  smallDeleteButton: {
-    backgroundColor: '#f0c3c3',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  smallButtonText: {
-    color: '#111827',
-    fontSize: 12,
+  actionText: {
+    color: '#1976d2',
     fontWeight: '600',
   },
-  bottomButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
+  deletePill: {
+    backgroundColor: '#fef2f2',
+  },
+  deleteText: {
+    color: '#dc2626',
+    fontWeight: '600',
+  },
+  emptyCard: {
+    alignItems: 'center',
     marginTop: 12,
   },
-  primaryButton: {
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  usersButton: {
-    backgroundColor: '#34C759',
-    flex: 1,
-  },
-  addBtnFlex: {
-    backgroundColor: '#007AFF',
-    flex: 2,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
   emptyText: {
-    fontSize: 16,
-    color: '#666',
+    color: '#6b7280',
   },
 });
-
-export default HomeScreen;
